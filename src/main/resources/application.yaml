@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: rag-service
+  main:
+    web-application-type: none
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o
+      embedding:
+        options:
+          model: text-embedding-3-small
