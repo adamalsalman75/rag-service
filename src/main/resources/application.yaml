@@ -1,8 +1,6 @@
 spring:
   application:
     name: rag-service
-  main:
-    web-application-type: none
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -12,3 +10,7 @@ spring:
       embedding:
         options:
           model: text-embedding-3-small
+vaadin:
+  push:
+    mode: automatic
+    transport: websocket

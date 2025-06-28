@@ -13,6 +13,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -41,10 +42,6 @@ public class RagService {
         try {
             // Add some Java files to the vector store
             addJavaFilesToVectorStore("src/main/java/dev/alsalman/ragservice");
-
-            // Test the RAG query
-            var resp = query("What does the RagService class do?");
-            log.info("RAG service response: {}", resp);
         } catch (Exception e) {
             log.error("Error initializing RAG service", e);
         }
@@ -90,7 +87,7 @@ public class RagService {
      * @param userQuestion the user's question
      * @return the response from the LLM
      */
-    public String query(String userQuestion) {
+    public Flux<String> query(String userQuestion) {
         log.info("Querying RAG service with: {}", userQuestion);
 
         // Search for relevant documents
@@ -123,6 +120,6 @@ public class RagService {
         Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
 
         // Get response from LLM
-        return chatClient.prompt(prompt).call().content();
+        return chatClient.prompt(prompt).stream().content();
     }
 }
