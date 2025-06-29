@@ -5,12 +5,8 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -22,7 +18,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -47,11 +42,6 @@ public class RagService {
         }
     }
 
-    /**
-     * Add Java files from a directory to the vector store
-     * @param directoryPath the directory path to scan for Java files
-     * @throws IOException if there's an error reading the files
-     */
     public void addJavaFilesToVectorStore(String directoryPath) throws IOException {
         log.info("Adding Java files from {} to vector store", directoryPath);
 
@@ -82,44 +72,22 @@ public class RagService {
         log.info("Added {} Java files to vector store", documents.size());
     }
 
-    /**
-     * Query the RAG service with a user question
-     * @param userQuestion the user's question
-     * @return the response from the LLM
-     */
-    public Flux<String> query(String userQuestion) {
-        log.info("Querying RAG service with: {}", userQuestion);
+    public Flux<String> query(String message) {
 
-        // Search for relevant documents
-        List<Document> relevantDocs = vectorStore.similaritySearch(
-                SearchRequest.builder()
-                        .query(userQuestion)
-                        .topK(3)
-                        .build());
-
-        // Extract content from relevant documents
-        String contextContent = relevantDocs.stream()
-                .map(Document::getText)
-                .collect(Collectors.joining("\n\n"));
-
-        log.info("Found {} relevant documents", relevantDocs.size());
-
-        String systemPromptContent = String.format("""
+        var system = """
                 You are a helpful assistant that answers questions about Java code.
-                Use the following code context to answer the user's question:
-
-                %s
-
+                
                 If you don't know the answer based on the provided context, say so.
-                """, contextContent);
+                """;
 
-        Message systemMessage = new SystemMessage(systemPromptContent);
-        Message userMessage = new UserMessage(userQuestion);
-
-        // Create prompt with system and user messages
-        Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
 
         // Get response from LLM
-        return chatClient.prompt(prompt).stream().content();
+        return chatClient
+                .prompt()
+                .system(system)
+                .advisors(QuestionAnswerAdvisor.builder(vectorStore).build())
+                .user(message)
+                .stream()
+                .content();
     }
 }
